@@ -74,8 +74,8 @@ void setup()
    pinMode(IR_PIN, INPUT);
    digitalWrite(IR_PIN, HIGH);
 
-    pinMode(SENSITIVITY_PIN, INPUT);
-    pinMode(DELAY_PIN, INPUT);
+   pinMode(SENSITIVITY_PIN, INPUT);
+   pinMode(DELAY_PIN, INPUT);
 }
 
 int analogRead(int pin, int samples){
@@ -141,6 +141,7 @@ public:
 };
 
 Alarm humanInRange;
+bool rcactive = false;
 
 void loop()                    
 {
@@ -176,24 +177,28 @@ void loop()
     bool active = (float)sensor1 > 1.05 * (float)limit;
     bool deactive = sensor1 < limit;
 
-    if(digitalRead(IR_PIN)) {
+    if(!digitalRead(IR_PIN)) {
       //no detected
     }
     else {
       //detected
-      active = true;
-      deactive = false;
+      //active = true;
+      //deactive = false;
+      rcactive = true;
     }
 
     humanInRange.activate(active);
     humanInRange.deactivate(deactive);
     
-    if(humanInRange.active) {
+    if(humanInRange.active || rcactive) {
       digitalWrite(INDICATION_SENSOR_PIN, HIGH);
 
       if(automat && active) {
         if(humanInRangeCounter < 65535)
           humanInRangeCounter++;
+      }
+      if(automat && rcactive) {
+          humanInRangeCounter = 65535;
       }
 
       //if(!automat && pauseInterval.expired()) {
@@ -220,6 +225,8 @@ void loop()
 
     if(automatInterval.expired() && automat) {
       automat = false;
+      
+      rcactive = false;
 
       if(humanInRangeCounter * HUMAN_IN_RANGE_RATIO > timeLimit * 10) {
         if(automatToggle) {
@@ -233,7 +240,7 @@ void loop()
           digitalWrite(AUT2_PIN, HIGH);
         }
         automatToggle = !automatToggle;
-        
+       
       }
       digitalWrite(LED_PIN, LOW);
       digitalWrite(INDICATION_TURN_PIN, LOW);
@@ -242,6 +249,12 @@ void loop()
     }
 
     if(!automat) {
+
+      if(rcactive) {
+        pauseCounter = 65535;
+        //pauseInterval.set(0);
+      }
+      
       if(!humanInRange.active)
         if(pauseCounter < 65535)
           pauseCounter++;
