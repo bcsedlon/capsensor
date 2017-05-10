@@ -20,9 +20,10 @@
 #define INDICATION_SENSOR_PIN 5  //indication
 #define INDICATION_TURN_PIN 6  //indication
 
-#define IR_PIN 7    //sensor
+#define RC_PIN 7    //sensor
 #define CS_TX_PIN 4 //sensor
 #define CS_RX_PIN 2 //sensor
+#define IR_PIN 3    //sensor
 
 #define SENSITIVITY_PIN A0
 #define DELAY_PIN A1
@@ -71,6 +72,8 @@ void setup()
    pinMode(LED_PIN, OUTPUT);
    pinMode(INDICATION_TURN_PIN, OUTPUT);
    pinMode(INDICATION_SENSOR_PIN, OUTPUT);
+   pinMode(RC_PIN, INPUT);
+   digitalWrite(RC_PIN, HIGH);
    pinMode(IR_PIN, INPUT);
    digitalWrite(IR_PIN, HIGH);
 
@@ -177,7 +180,7 @@ void loop()
     bool active = (float)sensor1 > 1.05 * (float)limit;
     bool deactive = sensor1 < limit;
 
-    if(!digitalRead(IR_PIN)) {
+    if(!digitalRead(RC_PIN)) {
       //no detected
     }
     else {
@@ -185,6 +188,11 @@ void loop()
       //active = true;
       //deactive = false;
       rcactive = true;
+    }
+    if(!digitalRead(IR_PIN)) {
+      //detected
+      active = true;
+      deactive = false;
     }
 
     humanInRange.activate(active);
