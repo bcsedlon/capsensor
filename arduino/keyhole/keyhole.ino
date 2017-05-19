@@ -1,4 +1,4 @@
-#include <CapacitiveSensor.h>
+//#include <CapacitiveSensor.h>
 #include "Interval.h"
 #include <avr/wdt.h>
 
@@ -21,9 +21,11 @@
 #define INDICATION_TURN_PIN 6  //indication
 
 #define RC_PIN 7    //sensor
-#define CS_TX_PIN 4 //sensor
-#define CS_RX_PIN 2 //sensor
-#define IR_PIN 3    //sensor
+//#define CS_TX_PIN 4 //sensor
+//#define CS_RX_PIN 2 //sensor
+//#define IR_PIN 3    //sensor
+#define SR04TX_PIN 2
+#define SR04RX_PIN 4
 
 #define SENSITIVITY_PIN A0
 #define DELAY_PIN A1
@@ -32,7 +34,7 @@
 #define PAUSE_RATIO 100 //2 //human not stay ratio,  1 = full time, 2 = half time, ...
 #define TURN_DELAY 5 //delay before new turn [s]
 
-CapacitiveSensor   capSensor1 = CapacitiveSensor(CS_TX_PIN, CS_RX_PIN);        // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
+//CapacitiveSensor   capSensor1 = CapacitiveSensor(CS_TX_PIN, CS_RX_PIN);        // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
 
 //CapacitiveSensor   cs_4_6 = CapacitiveSensor(4,6);        // 10M resistor between pins 4 & 6, pin 6 is sensor pin, add a wire and or foil
 //CapacitiveSensor   cs_4_8 = CapacitiveSensor(4,8);        // 10M resistor between pins 4 & 8, pin 8 is sensor pin, add a wire and or foil
@@ -50,9 +52,12 @@ void setup()
 
    wdt_enable(WDTO_4S);
    
-   capSensor1.set_CS_AutocaL_Millis(0xFFFFFFFF);     // turn off autocalibrate on channel 1 - just as an example
+   //capSensor1.set_CS_AutocaL_Millis(0xFFFFFFFF);     // turn off autocalibrate on channel 1 - just as an example
    
    Serial.begin(9600);
+
+   pinMode(SR04RX_PIN, INPUT);
+   pinMode(SR04TX_PIN, OUTPUT);
   
    digitalWrite(9, HIGH);   //relay spare
    digitalWrite(10, HIGH);  //relay spare
@@ -74,8 +79,8 @@ void setup()
    pinMode(INDICATION_SENSOR_PIN, OUTPUT);
    pinMode(RC_PIN, INPUT);
    digitalWrite(RC_PIN, HIGH);
-   pinMode(IR_PIN, INPUT);
-   digitalWrite(IR_PIN, HIGH);
+   //pinMode(IR_PIN, INPUT);
+   //digitalWrite(IR_PIN, HIGH);
 
    pinMode(SENSITIVITY_PIN, INPUT);
    pinMode(DELAY_PIN, INPUT);
@@ -151,34 +156,48 @@ void loop()
     wdt_reset();
   
     long start = millis();
-    long sensor1 =  capSensor1.capacitiveSensor(30);
+    
+    //long sensor1 =  capSensor1.capacitiveSensor(30);
+    digitalWrite(SR04TX_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(SR04TX_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(SR04TX_PIN, LOW);
+    long duration = pulseIn(SR04RX_PIN, HIGH);
+    //Calculate the distance (in cm) based on the speed of sound.
+    float distance = duration / 58.2;
 
+      
     //sensor1Filtered.Filter(sensor1);
     //sensor1 = sensor1Filtered.Current();
 
     //int limit = analogRead(SENSITIVITY_PIN, SAMPLES);
-    int limit = 25 * (pow(2, (0.01 * (1023 - analogRead(SENSITIVITY_PIN, SAMPLES)))) - 1); 
+    //int limit = 25 * (pow(2, (0.01 * (1023 - analogRead(SENSITIVITY_PIN, SAMPLES)))) - 1); 
+    int limit = analogRead(SENSITIVITY_PIN, SAMPLES) * 0.1;
     unsigned int timeLimit = (1023 - analogRead(DELAY_PIN, SAMPLES)) * 0.01 + 1;
 
     //if(serialInterval.expired()) {
     //  serialInterval.set(500);
-      Serial.print(millis() - start);        // check on performance in milliseconds
-      Serial.print("\t");                    // tab character for debug windown spacing
-      Serial.print(sensor1);                  // print sensor output 1
-      Serial.print("\t");                    // tab character for debug windown spacing
-      Serial.print(limit); 
-      Serial.print("\t");                    // tab character for debug windown spacing
-      Serial.print(timeLimit); 
+    Serial.print(millis() - start);        // check on performance in milliseconds
+    Serial.print("\t");                    // tab character for debug windown spacing
+    //Serial.print(sensor1);                  // print sensor output 1
+    Serial.print(distance);
+    Serial.print("\t");                    // tab character for debug windown spacing
+    Serial.print(limit); 
+    Serial.print("\t");                    // tab character for debug windown spacing
+    Serial.print(timeLimit); 
 
-      Serial.print("\t");                    // tab character for debug windown spacing
-      Serial.print(TURN_DELAY); 
-      Serial.print("\t");                    // tab character for debug windown spacing
-      Serial.println(pauseCounter * 0.1); 
+    Serial.print("\t");                    // tab character for debug windown spacing
+    Serial.print(TURN_DELAY); 
+    Serial.print("\t");                    // tab character for debug windown spacing
+    Serial.println(pauseCounter * 0.1); 
       
    // }
 
-    bool active = (float)sensor1 > 1.05 * (float)limit;
-    bool deactive = sensor1 < limit;
+    //bool active = (float)sensor1 > 1.05 * (float)limit;
+    //bool deactive = sensor1 < limit;
+    bool active = distance < limit;
+    bool deactive = distance > limit;
 
     if(!digitalRead(RC_PIN)) {
       //no detected
@@ -189,12 +208,13 @@ void loop()
       //deactive = false;
       rcactive = true;
     }
+    /*
     if(!digitalRead(IR_PIN)) {
       //detected
       active = true;
       deactive = false;
     }
-
+    */
     humanInRange.activate(active);
     humanInRange.deactivate(deactive);
     
@@ -218,6 +238,7 @@ void loop()
         humanInRangeCounter = 0;
         
         digitalWrite(USB_PIN, LOW);
+        Serial.println("USB");
         delay(1000);
         digitalWrite(USB_PIN, HIGH);
         automatInterval.set(timeLimit * 1000);
@@ -239,11 +260,13 @@ void loop()
       if(humanInRangeCounter * HUMAN_IN_RANGE_RATIO > timeLimit * 10) {
         if(automatToggle) {
           digitalWrite(AUT1_PIN, LOW);
+          Serial.println("AUT1");
           delay(1000);
           digitalWrite(AUT1_PIN, HIGH);
         }
         else {
           digitalWrite(AUT2_PIN, LOW);
+          Serial.println("AUT2");
           delay(1000);
           digitalWrite(AUT2_PIN, HIGH);
         }
