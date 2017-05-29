@@ -173,7 +173,7 @@ void loop()
 
     //int limit = analogRead(SENSITIVITY_PIN, SAMPLES);
     //int limit = 25 * (pow(2, (0.01 * (1023 - analogRead(SENSITIVITY_PIN, SAMPLES)))) - 1); 
-    int limit = analogRead(SENSITIVITY_PIN, SAMPLES) * 0.1;
+    int limit = (1023 - analogRead(SENSITIVITY_PIN, SAMPLES)) * 0.1 + 5;
     unsigned int timeLimit = (1023 - analogRead(DELAY_PIN, SAMPLES)) * 0.01 + 1;
 
     //if(serialInterval.expired()) {
