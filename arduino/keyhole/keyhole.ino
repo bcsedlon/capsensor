@@ -32,7 +32,7 @@
 
 #define HUMAN_IN_RANGE_RATIO 100 //4 //human stay ratio,  1 = full time, 2 = half time, ...
 #define PAUSE_RATIO 100 //2 //human not stay ratio,  1 = full time, 2 = half time, ...
-#define TURN_DELAY 5 //delay before new turn [s]
+#define TURN_DELAY 10 //5 //delay before new turn [s] //pauza bezi od sepnuti vydavaciho rele, 5s trva vydani napoje, 5s pauza 
 
 //CapacitiveSensor   capSensor1 = CapacitiveSensor(CS_TX_PIN, CS_RX_PIN);        // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
 
@@ -45,7 +45,7 @@
 Interval automatInterval, serialInterval, pauseInterval;
 bool automat;
 unsigned int humanInRangeCounter, pauseCounter;
-bool automatToggle;
+byte automatToggle; //0,1 AUT1, 2 AUT2
 
 void setup()                    
 {
@@ -258,7 +258,8 @@ void loop()
       rcactive = false;
 
       if(humanInRangeCounter * HUMAN_IN_RANGE_RATIO > timeLimit * 10) {
-        if(automatToggle) {
+        //if(automatToggle) {
+        if(automatToggle < 2) {
           digitalWrite(AUT1_PIN, LOW);
           Serial.println("AUT1");
           delay(1000);
@@ -270,7 +271,10 @@ void loop()
           delay(1000);
           digitalWrite(AUT2_PIN, HIGH);
         }
-        automatToggle = !automatToggle;
+        //automatToggle = !automatToggle;
+        automatToggle++;
+        if(automatToggle > 2)
+          automatToggle = 0;
        
       }
       digitalWrite(LED_PIN, LOW);
